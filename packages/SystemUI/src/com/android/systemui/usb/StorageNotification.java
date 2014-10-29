@@ -28,7 +28,6 @@ import android.os.HandlerThread;
 import android.os.UserHandle;
 import android.os.storage.StorageEventListener;
 import android.os.storage.StorageManager;
-import android.os.SystemProperties;
 import android.provider.Settings;
 import android.util.Log;
 
@@ -118,10 +117,6 @@ public class StorageNotification extends SystemUI {
              */
             connected = false;
         }
-        //once UMS connected and SD card mounted, enable UMS
-        if (connected && st.equals(Environment.MEDIA_MOUNTED)) {
-            mStorageManager.setUsbMassStorageEnabled(true);
-        }
         updateUsbMassStorageNotification(connected);
     }
 
@@ -131,10 +126,6 @@ public class StorageNotification extends SystemUI {
                 "Media {%s} state changed from {%s} -> {%s} (primary = %b)", path, oldState,
                 newState, isPrimary));
         if (newState.equals(Environment.MEDIA_SHARED)) {
-            if (!mUmsAvailable) {
-                mStorageManager.disableUsbMassStorage();
-            }
-
             /*
              * Storage is now shared. Modify the UMS notification
              * for stopping UMS.
@@ -157,10 +148,6 @@ public class StorageNotification extends SystemUI {
                     com.android.internal.R.drawable.stat_notify_sdcard_prepare, true, false, null);
             updateUsbMassStorageNotification(false);
         } else if (newState.equals(Environment.MEDIA_MOUNTED)) {
-            String usbMode = new UsbManager(null, null).getDefaultFunction();
-            final boolean isUmsMode = UsbManager.USB_FUNCTION_MASS_STORAGE.equals(usbMode);
-            if (mUmsAvailable && isUmsMode)
-                mStorageManager.enableUsbMassStorage();
             /*
              * Storage is now mounted. Dismiss any media notifications,
              * and enable UMS notification if connected.
@@ -287,15 +274,6 @@ public class StorageNotification extends SystemUI {
      */
     private synchronized void setUsbStorageNotification(int titleId, int messageId, int icon,
             boolean sound, boolean visible, PendingIntent pi) {
-        // force to show UsbSettings screen to select usb mode if property is true
-        if (SystemProperties.getBoolean("persist.sys.ums", true)) {
-            titleId = 0;
-            messageId = 0;
-            icon = 0;
-            sound = false;
-            visible = false;
-            pi = null;
-        }
 
         if (!visible && mUsbStorageNotification == null) {
             return;
